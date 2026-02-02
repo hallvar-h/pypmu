@@ -1,16 +1,11 @@
 import logging
-import socket
-from synchrophasor.pmu import Pmu, PmuError
+from multiprocessing import Event, Process, Queue
 from select import select
-from threading import Thread
-from multiprocessing import Queue, Event
-from multiprocessing import Process
 from sys import stdout
 from time import sleep, time
-from synchrophasor.frame import *
-import threading
 
-import collections
+from synchrophasor.frame import DataFrame, CommandFrame, CommonFrame, FrameError
+from synchrophasor.pmu import Pmu, PmuError
 
 
 class PmuMod(Pmu):
@@ -22,7 +17,7 @@ class PmuMod(Pmu):
     def stop(self):
         self._stopped = True
 
-    def send_data(self, phasors=[], analog=[], digital=[], freq=0, dfreq=0,
+    def generate_dataframe(self, phasors=[], analog=[], digital=[], freq=0, dfreq=0,
                   stat=("ok", True, "timestamp", False, False, False, 0, "<10", 0), soc=None, frasec=None):
 
         # PH_UNIT conversion
@@ -48,7 +43,11 @@ class PmuMod(Pmu):
             analog = map(lambda x: int(x / self.cfg2.get_analog_units()), analog)
 
         data_frame = DataFrame(self.cfg2.get_id_code(), stat, phasors, freq, dfreq, analog, digital, self.cfg2, soc, frasec)
-
+        return data_frame
+    
+    def send_data(self, *args, **kwargs):
+        
+        data_frame = self.generate_dataframe(*args, **kwargs)
         for buffer in self.client_buffers:
             buffer.put(data_frame)
 

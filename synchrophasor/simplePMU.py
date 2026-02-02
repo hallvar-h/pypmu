@@ -99,7 +99,7 @@ class SimplePMU:
 
         print('Done.')
 
-    def publish(self, time_stamp=None, phasor_data=None, freq_data=None, dfreq_data=None):
+    def assemble_dataframe_kwargs(self, time_stamp=None, phasor_data=None, freq_data=None, dfreq_data=None):
 
         if time_stamp is None:
             time_stamp = time.time()
@@ -139,8 +139,16 @@ class SimplePMU:
         if self.n_pmus > 1:
             for key in ['analog', 'digital', 'stat']:
                 data_kwargs[key] = [data_kwargs[key]]*self.n_pmus
+        return data_kwargs
 
+
+    def publish(self, *args, **kwargs):
+        data_kwargs = self.assemble_dataframe_kwargs(*args, **kwargs)
         self.pmu.send_data(**data_kwargs)
+
+    def generate_dataframe(self, *args, **kwargs):
+        data_kwargs = self.assemble_dataframe_kwargs(*args, **kwargs)
+        return self.pmu.generate_dataframe(**data_kwargs)
 
 
 if __name__ == '__main__':
@@ -164,6 +172,8 @@ if __name__ == '__main__':
         station_names=station_names,
         channel_names=channel_names,
     )
+    df = pmu.generate_dataframe(freq_data=[50, 51, 50])
+    df.get_freq()
     pmu.run()
 
     k = 0
